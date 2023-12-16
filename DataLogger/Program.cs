@@ -1,68 +1,65 @@
 ﻿using DataLogger.Helpers;
-using Microsoft.Extensions.Configuration;
-using System.Reflection.Metadata.Ecma335;
-using System.Xml;
-using Dapper;
-using System.Data.SqlClient;
+using Timer = System.Timers.Timer;
 
 
 
 internal class Program
 {
-	private static void Main(string[] args)
-	{
-		
+    private static string sourcePath;
+    private static string connectionString;
+    private static string backupPath;
+
+    private static void Main(string[] args)
+	{		
 		var config = Configurator.ReadConfiguration();
-		
-		string sourcePath = config.LogFilePath;
-		string connectionString = config.ConString;
-		string backupPath = config.BackupPath;
-		
-		if (string.IsNullOrEmpty(sourcePath)||
-			string.IsNullOrEmpty(connectionString)||
+
+		sourcePath = config.LogFilePath;
+	    connectionString = config.ConString;
+	    backupPath = config.BackupPath;
+
+		if (string.IsNullOrEmpty(sourcePath) ||
+			string.IsNullOrEmpty(connectionString) ||
 			string.IsNullOrEmpty(backupPath))
 		{
 			Printer.PrintIncorrectConfigMessage();
+			return;
 		}
 
-		else 
-		{
-			while (true)
-			{
-				var directory = new DirectoryInfo(sourcePath);
-				var filesList = directory.GetFiles();
-				if (filesList.Any())
-				{
-					foreach (var file in filesList)
-					{
-						var testResult = XmlParser.ParseLog(file.FullName);
-						if (testResult == null ||
-							testResult.TestStation.Name == "no data") 
-						{
-							Printer.PrintNOKSaving(file.FullName);
-							continue;
-						}
-						else
-						{
-							try
-							{
-								DataSaver.SaveData(connectionString, testResult);
-								Printer.PrintOKSaving(file.FullName);
-								File.Move(file.FullName,backupPath + file.Name);
+        var timer = new Timer(10000);
+        timer.Elapsed += TimerElapsed;
 
-							}
-							catch (Exception ex)
-							{
-								Printer.PrintErrorMessage(ex.Message);
-							}
-						}
-					}
+        Console.WriteLine(DateTime.Now);
+        timer.Start();
+    }
 
-				}
-
-				Thread.Sleep(10000);
-			}
-		}
-	
-	}
+    private static void TimerElapsed(object? sender, System.Timers.ElapsedEventArgs e)
+    {
+        var directory = new DirectoryInfo(sourcePath);
+        var filesList = directory.GetFiles("*.xml");
+        if (filesList.Any())
+        {
+            foreach (var file in filesList)
+            {
+                var testResult = XmlParser.ParseLog(file.FullName);
+                if (testResult == null || testResult.TestStation.Name == "no data")
+                {
+                    Printer.PrintNOKSaving(file.FullName);
+                    continue;
+                }
+                else
+                {
+                    try
+                    {                                              
+                        File.Move(file.FullName, backupPath + file.Name);
+                        DataSaver.SaveData(connectionString, testResult);
+                        Printer.PrintOKSaving(file.FullName);
+                    }
+                    catch (Exception ex)
+                    {
+                        Printer.PrintErrorMessage(ex.Message);
+                    }
+                }
+            }
+        }
+    }
 }

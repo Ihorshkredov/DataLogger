@@ -15,23 +15,22 @@ namespace DataLogger.Helpers
 		{
 			using (SqlConnection connection = new SqlConnection(connectionString))
 			{
-				DynamicParameters testerParameters = new DynamicParameters();
-				testerParameters.Add("@TesterID", testResult.TestStation.TesterID);
+				var testerParameters = new SqlParameter("@TesterID", testResult.TestStation.TesterID);
 				var resultTester = connection.Query<Tester>("GetTesterById", testerParameters, commandType: System.Data.CommandType.StoredProcedure);
 
-				if (resultTester.Count() == 0)
-				{
-					testerParameters.Add("@TesterName", testResult.TestStation.Name);
-					var testerResult = connection.Query("SaveTester", testerParameters, commandType: System.Data.CommandType.StoredProcedure);
+				if (resultTester.Any())
+				{					
+                    int testerResult = connection.Execute("EXEC SaveTester", testerParameters, commandType: System.Data.CommandType.StoredProcedure);
 				}
 
 				DynamicParameters fullCheckParameters = new DynamicParameters();
 				fullCheckParameters.Add("@TesterID", testResult.TestStation.TesterID);
 				fullCheckParameters.Add("@FulCheckStatus", testResult.FullTest.Status);
 				fullCheckParameters.Add("@FulCheckTimeStamp", testResult.FullTest.TimeStamp);
-				var result = connection.Query("SaveFullCheck",fullCheckParameters, commandType: System.Data.CommandType.StoredProcedure);
+				int result = connection.Execute("EXEC SaveFullCheck", fullCheckParameters, commandType: System.Data.CommandType.StoredProcedure);
 
-
+				List<SqlParameter> param = new List<SqlParameter>();
+				param.Add(new SqlParameter();
 				DynamicParameters stepsParameters = new DynamicParameters();	
 				foreach (var test in testResult.FullTest.Steps)
 				{
@@ -43,7 +42,7 @@ namespace DataLogger.Helpers
 					stepsParameters.Add("@TestValue", test.Value);
 					stepsParameters.Add("@TestStatus", test.Status);
 
-					var stepsResult = connection.Query("SaveTests", stepsParameters, commandType: System.Data.CommandType.StoredProcedure);
+					connection.Execute("EXEC SaveTests", stepsParameters, commandType: System.Data.CommandType.StoredProcedure);
 				}
 			}
 		}

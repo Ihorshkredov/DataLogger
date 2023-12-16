@@ -44,6 +44,7 @@ namespace DataLogger.Helpers
 			{
 				writer.WriteLine(errorMessage);
 			}
+
 			Console.ForegroundColor = ConsoleColor.Red;
 			Console.WriteLine("Some error happened.");
 			Console.WriteLine("Please check Error list file");
